@@ -1,6 +1,15 @@
 import json
 import re
-from slackbot.bot import respond_to, listen_to
+import datetime, time
+import requests
+from slackbot.bot import respond_to, default_reply
+
+INCIDENT_DATA = {
+    'category_id': 1,
+    'location_id': 1,
+    'description': '',
+    'date_occurred': ''
+}
 
 RED_FLAG = \
 """
@@ -52,7 +61,21 @@ def log(message):
     print(message.body)
     message.reply_webapi('What Type of incident would you like to report?', json.dumps(guide))
 
-@respond_to('(red|yellow|green)', re.IGNORECASE)
-def category(message):
+@respond_to('(red)|(yellow)|(green)', re.IGNORECASE)
+def incident_category(message, red, yellow, green):
+    ct = red or yellow or green
+    INCIDENT_DATA['date_occurred'] = datetime.datetime.now().__str__()
     message.reply("Tell me about the incident")
-    
+
+@default_reply
+def incidet_description(message):
+    print(message)
+    if INCIDENT_DATA['date_occurred'] != '':
+        INCIDENT_DATA['description'] = message.body['text']
+        print(INCIDENT_DATA)
+        r = requests.post('http://app.nairobi.us/wire/api/incidents', data = INCIDENT_DATA)
+        if r.status_code == 200:
+            message.reply('Incident logged')
+    else:
+        message.reply('I did not understand that')
+        log(message)
